@@ -7,6 +7,10 @@
 package es.upm.etsiinf.sos;
 
 import java.rmi.RemoteException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.axis2.AxisFault;
 
@@ -22,6 +26,8 @@ public class WineSocialUPMSkeleton {
 	private static es.upm.etsiinf.sos.model.xsd.User admin;
 	private static final String ADMIN_USERNAME = "admin";
 	private static String ADMIN_PASSWORD = "admin";
+	private static Set<String> usuarios;
+	private static Map<String, Set<String>> seguidores;
 
 	public WineSocialUPMSkeleton() {
 		try {
@@ -29,6 +35,8 @@ public class WineSocialUPMSkeleton {
 			admin = new es.upm.etsiinf.sos.model.xsd.User();
 			admin.setName(ADMIN_USERNAME);
 			admin.setPwd(ADMIN_PASSWORD);
+			usuarios = new HashSet<>();
+			seguidores = new HashMap<>();
 //			es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.Login login = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.Login();
 //			es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.LoginBackEnd l = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.LoginBackEnd();
 //			l.setName(admin.getName());
@@ -113,9 +121,21 @@ public class WineSocialUPMSkeleton {
 	 * @return addFollowerResponse
 	 */
 	public es.upm.etsiinf.sos.AddFollowerResponse addFollower(es.upm.etsiinf.sos.AddFollower addFollower) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException(
-				"Please implement " + this.getClass().getName() + "#addFollower");
+		es.upm.etsiinf.sos.AddFollowerResponse r = new es.upm.etsiinf.sos.AddFollowerResponse();
+		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
+
+		if (currentUser == null || !usuarios.contains(addFollower.getArgs0().getUsername()) || seguidores.get(currentUser.getName()).contains(addFollower.getArgs0().getUsername())) {
+			response.setResponse(false);
+			r.set_return(response);
+			return r;
+		}
+		
+		boolean result = seguidores.get(currentUser.getName()).add(addFollower.getArgs0().getUsername());
+		
+		response.setResponse(result);
+		r.set_return(response);
+		
+		return r;
 	}
 
 	/**
@@ -125,8 +145,7 @@ public class WineSocialUPMSkeleton {
 	 * @return logoutResponse
 	 */
 	public es.upm.etsiinf.sos.LogoutResponse logout(es.upm.etsiinf.sos.Logout logout) {
-		// TODO : fill this with the necessary business logic
-//		throw new java.lang.UnsupportedOperationException("Please implement " + this.getClass().getName() + "#logout");
+
 		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
 		es.upm.etsiinf.sos.LogoutResponse r = new es.upm.etsiinf.sos.LogoutResponse();
 
@@ -184,8 +203,7 @@ public class WineSocialUPMSkeleton {
 	 * @return addUserResponse
 	 */
 	public es.upm.etsiinf.sos.AddUserResponse addUser(es.upm.etsiinf.sos.AddUser addUser) {
-		// TODO : fill this with the necessary business logic
-//		throw new java.lang.UnsupportedOperationException("Please implement " + this.getClass().getName() + "#addUser");
+
 		es.upm.etsiinf.sos.model.xsd.AddUserResponse response = new es.upm.etsiinf.sos.model.xsd.AddUserResponse();
 		es.upm.etsiinf.sos.AddUserResponse r = new es.upm.etsiinf.sos.AddUserResponse();
 
@@ -195,15 +213,14 @@ public class WineSocialUPMSkeleton {
 //			return r;
 //		}
 
-		if (currentUser == null || !currentUser.getName().equals(ADMIN_USERNAME)) {
+		if (currentUser == null || !currentUser.getName().equals(ADMIN_USERNAME)
+				|| usuarios.contains(addUser.getArgs0().getUsername())) {
 			response.setResponse(false);
 			r.set_return(response);
 			return r;
 		}
 
 		try {
-//			authStub = new UPMAuthenticationAuthorizationWSSkeletonStub();
-
 			UserBackEnd user = new UserBackEnd();
 			user.setName(addUser.getArgs0().getUsername());
 
@@ -214,6 +231,11 @@ public class WineSocialUPMSkeleton {
 
 			response.setResponse(authResponse.get_return().getResult());
 			response.setPwd(authResponse.get_return().getPassword());
+
+			if (response.getResponse()) {
+				usuarios.add(addUser.getArgs0().getUsername());
+				seguidores.put(addUser.getArgs0().getUsername(), new HashSet<>());
+			}
 		} catch (AxisFault e) {
 			e.printStackTrace();
 			response.setResponse(false);
