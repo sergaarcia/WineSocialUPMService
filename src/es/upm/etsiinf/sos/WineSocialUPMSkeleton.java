@@ -57,15 +57,21 @@ public class WineSocialUPMSkeleton {
 	 * @return getMyFollowersResponse
 	 */
 	public es.upm.etsiinf.sos.GetMyFollowersResponse getMyFollowers(es.upm.etsiinf.sos.GetMyFollowers getMyFollowers) {
-		// TODO : fill this with the necessary business logic
-//		throw new java.lang.UnsupportedOperationException(
-//				"Please implement " + this.getClass().getName() + "#getMyFollowers");
-//		try {
-//			authStub = new UPMAuthenticationAuthorizationWSSkeletonStub();
-//		} catch (AxisFault e) {
-//
-//		}
-		return null;
+
+		es.upm.etsiinf.sos.GetMyFollowersResponse r = new es.upm.etsiinf.sos.GetMyFollowersResponse();
+		es.upm.etsiinf.sos.model.xsd.FollowerList list = new es.upm.etsiinf.sos.model.xsd.FollowerList();
+
+		if (currentUser == null) {
+			list.setResult(false);
+			r.set_return(list);
+			return r;
+		}
+		
+		list.setFollowers(seguidores.get(currentUser.getName()).toArray(new String[0]));
+		list.setResult(true);
+		r.set_return(list);
+
+		return r;
 	}
 
 	/**
@@ -124,17 +130,18 @@ public class WineSocialUPMSkeleton {
 		es.upm.etsiinf.sos.AddFollowerResponse r = new es.upm.etsiinf.sos.AddFollowerResponse();
 		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
 
-		if (currentUser == null || !usuarios.contains(addFollower.getArgs0().getUsername()) || seguidores.get(currentUser.getName()).contains(addFollower.getArgs0().getUsername())) {
+		if (currentUser == null || !usuarios.contains(addFollower.getArgs0().getUsername())
+				|| seguidores.get(currentUser.getName()).contains(addFollower.getArgs0().getUsername())) {
 			response.setResponse(false);
 			r.set_return(response);
 			return r;
 		}
-		
+
 		boolean result = seguidores.get(currentUser.getName()).add(addFollower.getArgs0().getUsername());
-		
+
 		response.setResponse(result);
 		r.set_return(response);
-		
+
 		return r;
 	}
 
@@ -191,9 +198,22 @@ public class WineSocialUPMSkeleton {
 	 * @return unfollowResponse
 	 */
 	public es.upm.etsiinf.sos.UnfollowResponse unfollow(es.upm.etsiinf.sos.Unfollow unfollow) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException(
-				"Please implement " + this.getClass().getName() + "#unfollow");
+
+		es.upm.etsiinf.sos.UnfollowResponse r = new es.upm.etsiinf.sos.UnfollowResponse();
+		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
+
+		if (currentUser == null || !usuarios.contains(unfollow.getArgs0().getUsername())
+				|| !seguidores.get(currentUser.getName()).contains(unfollow.getArgs0().getUsername())) {
+			response.setResponse(false);
+			r.set_return(response);
+			return r;
+		}
+
+		boolean result = seguidores.get(currentUser.getName()).remove(unfollow.getArgs0().getUsername());
+		response.setResponse(result);
+		r.set_return(response);
+
+		return r;
 	}
 
 	/**
