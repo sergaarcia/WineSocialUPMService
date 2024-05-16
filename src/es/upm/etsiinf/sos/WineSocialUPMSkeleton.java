@@ -10,13 +10,12 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.axis2.AxisFault;
 
-import es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.AddUserResponseBackEnd;
-import es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUserE;
 import es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.UserBackEnd;
 
 /** WineSocialUPMSkeleton java skeleton for the axisService */
@@ -30,24 +29,26 @@ public class WineSocialUPMSkeleton {
 	private static Set<String> usuarios;
 	private static Map<String, Set<String>> seguidores;
 	private static ArrayList<es.upm.etsiinf.sos.model.xsd.Wine> vinos;
+	private static Map<String, Map<es.upm.etsiinf.sos.model.xsd.Wine, Integer>> puntuaciones;
 
 	public WineSocialUPMSkeleton() {
 		try {
-			authStub = new UPMAuthenticationAuthorizationWSSkeletonStub();
-			admin = new es.upm.etsiinf.sos.model.xsd.User();
-			admin.setName(ADMIN_USERNAME);
-			admin.setPwd(ADMIN_PASSWORD);
-			usuarios = new HashSet<>();
-			seguidores = new HashMap<>();
-			vinos = new ArrayList<>();
-//			es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.Login login = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.Login();
-//			es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.LoginBackEnd l = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.LoginBackEnd();
-//			l.setName(admin.getName());
-//			l.setPassword(admin.getPwd());
-//			login.setLogin(l);
-//			authStub.login(login);
+			if (authStub == null)
+				authStub = new UPMAuthenticationAuthorizationWSSkeletonStub();
+			if (admin == null) {
+				admin = new es.upm.etsiinf.sos.model.xsd.User();
+				admin.setName(ADMIN_USERNAME);
+				admin.setPwd(ADMIN_PASSWORD);
+			}
+			if (usuarios == null)
+				usuarios = new HashSet<>();
+			if (seguidores == null)
+				seguidores = new HashMap<>();
+			if (vinos == null)
+				vinos = new ArrayList<>();
+			if (puntuaciones == null)
+				puntuaciones = new LinkedHashMap<>();
 		} catch (AxisFault e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -70,6 +71,8 @@ public class WineSocialUPMSkeleton {
 			return r;
 		}
 
+		if (seguidores == null)
+			list.setFollowers(new String[0]);
 		list.setFollowers(seguidores.get(currentUser.getName()).toArray(new String[0]));
 		list.setResult(true);
 		r.set_return(list);
@@ -84,9 +87,7 @@ public class WineSocialUPMSkeleton {
 	 * @return removeUserResponse
 	 */
 	public es.upm.etsiinf.sos.RemoveUserResponse removeUser(es.upm.etsiinf.sos.RemoveUser removeUser) {
-		// TODO : fill this with the necessary business logic
-//		throw new java.lang.UnsupportedOperationException(
-//				"Please implement " + this.getClass().getName() + "#removeUser");
+
 		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
 		es.upm.etsiinf.sos.RemoveUserResponse r = new es.upm.etsiinf.sos.RemoveUserResponse();
 
@@ -114,6 +115,11 @@ public class WineSocialUPMSkeleton {
 					.removeUser(u);
 
 			response.setResponse(authResponse.get_return().getResult());
+			if (response.getResponse()) {
+				usuarios.remove(removeUser.getArgs0().getUsername());
+				seguidores.remove(removeUser.getArgs0().getUsername());
+				puntuaciones.remove(removeUser.getArgs0().getUsername());
+			}
 		} catch (RemoteException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -133,7 +139,8 @@ public class WineSocialUPMSkeleton {
 		es.upm.etsiinf.sos.AddFollowerResponse r = new es.upm.etsiinf.sos.AddFollowerResponse();
 		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
 
-		if (currentUser == null || !usuarios.contains(addFollower.getArgs0().getUsername())
+		if (currentUser == null || currentUser.getName().equals(addFollower.getArgs0().getUsername())
+				|| !usuarios.contains(addFollower.getArgs0().getUsername())
 				|| seguidores.get(currentUser.getName()).contains(addFollower.getArgs0().getUsername())) {
 			response.setResponse(false);
 			r.set_return(response);
@@ -211,9 +218,40 @@ public class WineSocialUPMSkeleton {
 	 * @return getMyRatesResponse
 	 */
 	public es.upm.etsiinf.sos.GetMyRatesResponse getMyRates(es.upm.etsiinf.sos.GetMyRates getMyRates) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException(
-				"Please implement " + this.getClass().getName() + "#getMyRates");
+
+		es.upm.etsiinf.sos.GetMyRatesResponse r = new es.upm.etsiinf.sos.GetMyRatesResponse();
+		es.upm.etsiinf.sos.model.xsd.WinesRatedList list = new es.upm.etsiinf.sos.model.xsd.WinesRatedList();
+
+		if (currentUser == null) {
+			list.setResult(false);
+			r.set_return(list);
+			return r;
+		}
+
+		Map<es.upm.etsiinf.sos.model.xsd.Wine, Integer> misPuntuaciones = puntuaciones.get(currentUser.getName());
+		String[] names = new String[misPuntuaciones.size()];
+		String[] grapes = new String[misPuntuaciones.size()];
+		int[] years = new int[misPuntuaciones.size()];
+		int[] rates = new int[misPuntuaciones.size()];
+
+		int i = 0;
+		for (Map.Entry<es.upm.etsiinf.sos.model.xsd.Wine, Integer> entry : misPuntuaciones.entrySet()) {
+			es.upm.etsiinf.sos.model.xsd.Wine vino = entry.getKey();
+			names[i] = vino.getName();
+			grapes[i] = vino.getGrape();
+			years[i] = vino.getYear();
+			rates[i] = entry.getValue();
+			i++;
+		}
+
+		list.setNames(names);
+		list.setGrapes(grapes);
+		list.setYears(years);
+		list.setRates(rates);
+		list.setResult(true);
+		r.set_return(list);
+
+		return r;
 	}
 
 	/**
@@ -280,6 +318,7 @@ public class WineSocialUPMSkeleton {
 			if (response.getResponse()) {
 				usuarios.add(addUser.getArgs0().getUsername());
 				seguidores.put(addUser.getArgs0().getUsername(), new HashSet<>());
+				puntuaciones.put(addUser.getArgs0().getUsername(), new HashMap<>());
 			}
 		} catch (AxisFault e) {
 			e.printStackTrace();
@@ -301,9 +340,29 @@ public class WineSocialUPMSkeleton {
 	 * @return rateWineResponse
 	 */
 	public es.upm.etsiinf.sos.RateWineResponse rateWine(es.upm.etsiinf.sos.RateWine rateWine) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException(
-				"Please implement " + this.getClass().getName() + "#rateWine");
+
+		es.upm.etsiinf.sos.RateWineResponse r = new es.upm.etsiinf.sos.RateWineResponse();
+		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
+
+		if (currentUser == null) {
+			response.setResponse(false);
+			r.set_return(response);
+		}
+
+		for (es.upm.etsiinf.sos.model.xsd.Wine vino : vinos) {
+			if (vino.getName().equals(rateWine.getArgs0().getName())
+					&& vino.getGrape().equals(rateWine.getArgs0().getGrape())
+					&& vino.getYear() == rateWine.getArgs0().getYear()) {
+				puntuaciones.get(currentUser.getName()).put(vino, rateWine.getArgs0().getRate());
+				response.setResponse(true);
+				r.set_return(response);
+				return r;
+			}
+		}
+
+		response.setResponse(false);
+		r.set_return(response);
+		return r;
 	}
 
 	/**
@@ -318,6 +377,11 @@ public class WineSocialUPMSkeleton {
 		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
 
 		if (currentUser == null || !currentUser.getName().equals(ADMIN_USERNAME)) {
+			response.setResponse(false);
+			r.set_return(response);
+			return r;
+		}
+		if (vinos.contains(addWine.getArgs0())) {
 			response.setResponse(false);
 			r.set_return(response);
 			return r;
@@ -346,9 +410,34 @@ public class WineSocialUPMSkeleton {
 	 * @return getWinesResponse
 	 */
 	public es.upm.etsiinf.sos.GetWinesResponse getWines(es.upm.etsiinf.sos.GetWines getWines) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException(
-				"Please implement " + this.getClass().getName() + "#getWines");
+
+		es.upm.etsiinf.sos.GetWinesResponse r = new es.upm.etsiinf.sos.GetWinesResponse();
+		es.upm.etsiinf.sos.model.xsd.WineList list = new es.upm.etsiinf.sos.model.xsd.WineList();
+
+		if (currentUser == null) {
+			list.setResult(false);
+			r.set_return(list);
+			return r;
+		}
+
+		String[] names = new String[vinos.size()];
+		String[] grapes = new String[vinos.size()];
+		int[] years = new int[vinos.size()];
+
+		for (int i = 0; i < vinos.size(); i++) {
+			es.upm.etsiinf.sos.model.xsd.Wine vino = vinos.get(i);
+			names[vinos.size() - i - 1] = vino.getName();
+			grapes[i] = vino.getGrape();
+			years[i] = vino.getYear();
+		}
+
+		list.setNames(names);
+		list.setGrapes(grapes);
+		list.setYears(years);
+		list.setResult(true);
+		r.set_return(list);
+
+		return r;
 	}
 
 	/**
@@ -472,8 +561,41 @@ public class WineSocialUPMSkeleton {
 	 */
 	public es.upm.etsiinf.sos.GetMyFollowerRatesResponse getMyFollowerRates(
 			es.upm.etsiinf.sos.GetMyFollowerRates getMyFollowerRates) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException(
-				"Please implement " + this.getClass().getName() + "#getMyFollowerRates");
+
+		es.upm.etsiinf.sos.GetMyFollowerRatesResponse r = new es.upm.etsiinf.sos.GetMyFollowerRatesResponse();
+		es.upm.etsiinf.sos.model.xsd.WinesRatedList list = new es.upm.etsiinf.sos.model.xsd.WinesRatedList();
+
+		if (currentUser == null
+				|| !seguidores.get(currentUser.getName()).contains(getMyFollowerRates.getArgs0().getUsername())) {
+			list.setResult(false);
+			r.set_return(list);
+			return r;
+		}
+
+		Map<es.upm.etsiinf.sos.model.xsd.Wine, Integer> seguidorPuntuaciones = puntuaciones
+				.get(getMyFollowerRates.getArgs0().getUsername());
+		String[] names = new String[seguidorPuntuaciones.size()];
+		String[] grapes = new String[seguidorPuntuaciones.size()];
+		int[] years = new int[seguidorPuntuaciones.size()];
+		int[] rates = new int[seguidorPuntuaciones.size()];
+
+		int i = 0;
+		for (Map.Entry<es.upm.etsiinf.sos.model.xsd.Wine, Integer> entry : seguidorPuntuaciones.entrySet()) {
+			es.upm.etsiinf.sos.model.xsd.Wine vino = entry.getKey();
+			names[i] = vino.getName();
+			grapes[i] = vino.getGrape();
+			years[i] = vino.getYear();
+			rates[i] = entry.getValue();
+			i++;
+		}
+
+		list.setNames(names);
+		list.setGrapes(grapes);
+		list.setYears(years);
+		list.setRates(rates);
+		list.setResult(true);
+		r.set_return(list);
+
+		return r;
 	}
 }
