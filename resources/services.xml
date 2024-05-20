@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?><!-- This file was auto-generated from WSDL --><!-- by the Apache Axis2 version: 1.8.2  Built on : Jul 13, 2022 (06:38:03 EDT) --><serviceGroup>
-    <service name="WineSocialUPM">
+    <service name="WineSocialUPM" scope="soapsession">
         <messageReceivers>
             <messageReceiver mep="http://www.w3.org/ns/wsdl/in-out" class="es.upm.etsiinf.sos.WineSocialUPMMessageReceiverInOut"/>
         </messageReceivers>

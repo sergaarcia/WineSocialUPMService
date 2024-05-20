@@ -11,8 +11,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.axis2.AxisFault;
 
@@ -21,15 +24,20 @@ import es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.UserBackE
 /** WineSocialUPMSkeleton java skeleton for the axisService */
 public class WineSocialUPMSkeleton {
 
-	private UPMAuthenticationAuthorizationWSSkeletonStub authStub;
-	private static es.upm.etsiinf.sos.model.xsd.User currentUser;
+	private static UPMAuthenticationAuthorizationWSSkeletonStub authStub;
+	private es.upm.etsiinf.sos.model.xsd.User currentUser;
 	private static es.upm.etsiinf.sos.model.xsd.User admin;
 	private static final String ADMIN_USERNAME = "admin";
 	private static String ADMIN_PASSWORD = "admin";
-	private static Set<String> usuarios;
-	private static Map<String, Set<String>> seguidores;
-	private static ArrayList<es.upm.etsiinf.sos.model.xsd.Wine> vinos;
-	private static Map<String, Map<es.upm.etsiinf.sos.model.xsd.Wine, Integer>> puntuaciones;
+	private static Set<String> usuarios = ConcurrentHashMap.newKeySet();
+//	private static Map<String, es.upm.etsiinf.sos.model.xsd.User> usuarios = new HashMap<>();
+//	private static List<String> sesionesUsuarios = new ArrayList<>();
+	private static Map<String, Set<String>> seguidores = new ConcurrentHashMap<>();
+	private static List<es.upm.etsiinf.sos.model.xsd.Wine> vinos = new CopyOnWriteArrayList<>();
+	private static Map<String, Map<es.upm.etsiinf.sos.model.xsd.Wine, Integer>> puntuaciones = new ConcurrentHashMap<>();
+	
+//	private boolean log = false;
+	
 
 	public WineSocialUPMSkeleton() {
 		try {
@@ -40,14 +48,6 @@ public class WineSocialUPMSkeleton {
 				admin.setName(ADMIN_USERNAME);
 				admin.setPwd(ADMIN_PASSWORD);
 			}
-			if (usuarios == null)
-				usuarios = new HashSet<>();
-			if (seguidores == null)
-				seguidores = new HashMap<>();
-			if (vinos == null)
-				vinos = new ArrayList<>();
-			if (puntuaciones == null)
-				puntuaciones = new LinkedHashMap<>();
 		} catch (AxisFault e) {
 			e.printStackTrace();
 		}
@@ -88,41 +88,28 @@ public class WineSocialUPMSkeleton {
 	 */
 	public es.upm.etsiinf.sos.RemoveUserResponse removeUser(es.upm.etsiinf.sos.RemoveUser removeUser) {
 
-		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
 		es.upm.etsiinf.sos.RemoveUserResponse r = new es.upm.etsiinf.sos.RemoveUserResponse();
+		es.upm.etsiinf.sos.model.xsd.Response response = createResponse(false);
 
-//		if (currentUser != null && !currentUser.getName().equals(removeUser.getArgs0().getUsername())
-//				&& !currentUser.getName().equals(ADMIN_USERNAME)
-//				&& !removeUser.getArgs0().getUsername().equals(ADMIN_USERNAME)) {
-//			response.setResponse(false);
-//			r.set_return(response);
-//			return r;
-//		}
-		if (currentUser == null || removeUser.getArgs0().getUsername().equals(ADMIN_USERNAME)
-				|| (!currentUser.getName().equals(ADMIN_USERNAME)
-						&& !currentUser.getName().equals(removeUser.getArgs0().getUsername()))) {
-			response.setResponse(false);
-			r.set_return(response);
-			return r;
-		}
+		if (isAdmin() || isCurrentUser(removeUser.getArgs0().getUsername())) {
+			try {
+				es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUserE u = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUserE();
+				es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUser user = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUser();
+				user.setName(removeUser.getArgs0().getUsername());
+				u.setRemoveUser(user);
 
-		es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUserE u = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUserE();
-		es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUser user = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUser();
-		user.setName(removeUser.getArgs0().getUsername());
-		u.setRemoveUser(user);
-		try {
-			es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUserResponseE authResponse = authStub
-					.removeUser(u);
-
-			response.setResponse(authResponse.get_return().getResult());
-			if (response.getResponse()) {
-				usuarios.remove(removeUser.getArgs0().getUsername());
-				seguidores.remove(removeUser.getArgs0().getUsername());
-				puntuaciones.remove(removeUser.getArgs0().getUsername());
+				es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.RemoveUserResponseE authResponse = authStub
+						.removeUser(u);
+				boolean result = authResponse.get_return().getResult();
+				if (result) {
+					usuarios.remove(removeUser.getArgs0().getUsername());
+					seguidores.remove(removeUser.getArgs0().getUsername());
+					puntuaciones.remove(removeUser.getArgs0().getUsername());
+				}
+				response.setResponse(result);
+			} catch (RemoteException e) {
+				e.printStackTrace();
 			}
-		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 
 		r.set_return(response);
@@ -597,5 +584,19 @@ public class WineSocialUPMSkeleton {
 		r.set_return(list);
 
 		return r;
+	}
+
+	private es.upm.etsiinf.sos.model.xsd.Response createResponse(boolean result) {
+		es.upm.etsiinf.sos.model.xsd.Response response = new es.upm.etsiinf.sos.model.xsd.Response();
+		response.setResponse(result);
+		return response;
+	}
+
+	private boolean isAdmin() {
+		return currentUser != null && ADMIN_USERNAME.equals(currentUser.getName());
+	}
+
+	private boolean isCurrentUser(String username) {
+		return currentUser != null && currentUser.getName().equals(username);
 	}
 }
