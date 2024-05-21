@@ -91,9 +91,14 @@ public class WineSocialUPMSkeleton {
 						.removeUser(u);
 				boolean result = authResponse.get_return().getResult();
 				if (result) {
-					usuarios.remove(removeUser.getArgs0().getUsername());
-					seguidores.remove(removeUser.getArgs0().getUsername());
-					puntuaciones.remove(removeUser.getArgs0().getUsername());
+					String username = removeUser.getArgs0().getUsername();
+					usuarios.remove(username);
+					seguidores.remove(username);
+					puntuaciones.remove(username);
+
+					for (Set<String> listaSeguidores : seguidores.values()) {
+						listaSeguidores.remove(username);
+					}
 				}
 				response.setResponse(result);
 			} catch (RemoteException e) {
@@ -162,22 +167,30 @@ public class WineSocialUPMSkeleton {
 		es.upm.etsiinf.sos.model.xsd.Response response = createResponse(false);
 
 		if (isAdmin()) {
-			for (int i = 0; i < vinos.size(); i++) {
-				es.upm.etsiinf.sos.model.xsd.Wine vino = vinos.get(i);
+			es.upm.etsiinf.sos.model.xsd.Wine wineToRemove = null;
+			for (es.upm.etsiinf.sos.model.xsd.Wine vino : vinos) {
 				if (vino.getName().equals(removeWine.getArgs0().getName())
 						&& vino.getGrape().equals(removeWine.getArgs0().getGrape())
 						&& vino.getYear() == removeWine.getArgs0().getYear()) {
-					vinos.remove(i);
-					response.setResponse(true);
-					r.set_return(response);
-					return r;
+					wineToRemove = vino;
+					break;
 				}
+			}
+
+			if (wineToRemove != null) {
+				vinos.remove(wineToRemove);
+				
+				for (Map<es.upm.etsiinf.sos.model.xsd.Wine, Integer> listaPuntuaciones : puntuaciones.values()) {
+					listaPuntuaciones.remove(wineToRemove);
+				}
+				response.setResponse(true);
 			}
 		}
 
 		r.set_return(response);
 
 		return r;
+
 	}
 
 	/**
@@ -461,7 +474,7 @@ public class WineSocialUPMSkeleton {
 		try {
 			es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.Login l = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.Login();
 			es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.LoginBackEnd loginBackEnd = new es.upm.etsiinf.sos.UPMAuthenticationAuthorizationWSSkeletonStub.LoginBackEnd();
-			
+
 			loginBackEnd.setName(login.getArgs0().getName());
 			loginBackEnd.setPassword(login.getArgs0().getPwd());
 			l.setLogin(loginBackEnd);
