@@ -7,6 +7,8 @@
 package es.upm.etsiinf.sos;
 
 import java.rmi.RemoteException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,10 +27,12 @@ public class WineSocialUPMSkeleton {
 	private static es.upm.etsiinf.sos.model.xsd.User admin;
 	private static final String ADMIN_USERNAME = "admin";
 	private static String ADMIN_PASSWORD = "admin";
-	private static Set<String> usuarios = ConcurrentHashMap.newKeySet();
-	private static Map<String, Set<String>> seguidores = new ConcurrentHashMap<>();
-	private static List<es.upm.etsiinf.sos.model.xsd.Wine> vinos = new CopyOnWriteArrayList<>();
-	private static Map<String, Map<es.upm.etsiinf.sos.model.xsd.Wine, Integer>> puntuaciones = new ConcurrentHashMap<>();
+	private static List<String> usuarios = new ArrayList<>();
+	private static Map<String, List<String>> seguidores = new LinkedHashMap<>();
+	private static List<es.upm.etsiinf.sos.model.xsd.Wine> vinos = new ArrayList<>();
+	private static Map<String, Map<es.upm.etsiinf.sos.model.xsd.Wine, Integer>> puntuaciones = new LinkedHashMap<>();
+	// Usamos LinkedHashMap y ArrayList para las estructuras de datos para mantener
+	// el orden de inserción, lo cual necesitaremos para ciertas funcionalidades
 
 	public WineSocialUPMSkeleton() {
 		try {
@@ -96,7 +100,7 @@ public class WineSocialUPMSkeleton {
 					seguidores.remove(username);
 					puntuaciones.remove(username);
 
-					for (Set<String> listaSeguidores : seguidores.values()) {
+					for (List<String> listaSeguidores : seguidores.values()) {
 						listaSeguidores.remove(username);
 					}
 				}
@@ -179,7 +183,7 @@ public class WineSocialUPMSkeleton {
 
 			if (wineToRemove != null) {
 				vinos.remove(wineToRemove);
-				
+
 				for (Map<es.upm.etsiinf.sos.model.xsd.Wine, Integer> listaPuntuaciones : puntuaciones.values()) {
 					listaPuntuaciones.remove(wineToRemove);
 				}
@@ -287,8 +291,8 @@ public class WineSocialUPMSkeleton {
 
 				if (response.getResponse()) {
 					usuarios.add(addUser.getArgs0().getUsername());
-					seguidores.put(addUser.getArgs0().getUsername(), ConcurrentHashMap.newKeySet());
-					puntuaciones.put(addUser.getArgs0().getUsername(), new ConcurrentHashMap<>());
+					seguidores.put(addUser.getArgs0().getUsername(), new ArrayList<>());
+					puntuaciones.put(addUser.getArgs0().getUsername(), new LinkedHashMap<>());
 				}
 			} catch (RemoteException e) {
 				e.printStackTrace();
@@ -461,9 +465,6 @@ public class WineSocialUPMSkeleton {
 		}
 		if (login.getArgs0().getName().equals(ADMIN_USERNAME)) {
 			if (login.getArgs0().getPwd().equals(ADMIN_PASSWORD)) {
-//				currentUser = new es.upm.etsiinf.sos.model.xsd.User();
-//				currentUser.setName(ADMIN_USERNAME);
-//				currentUser.setPwd(ADMIN_PASSWORD);
 				currentUser = admin;
 				response.setResponse(true);
 			}
