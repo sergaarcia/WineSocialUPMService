@@ -11,9 +11,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.axis2.AxisFault;
 
@@ -453,7 +450,7 @@ public class WineSocialUPMSkeleton {
 
 		es.upm.etsiinf.sos.LoginResponse r = new es.upm.etsiinf.sos.LoginResponse();
 		es.upm.etsiinf.sos.model.xsd.Response response = createResponse(false);
-
+		
 		if (isCurrentUser(login.getArgs0().getName())) {
 			response.setResponse(true);
 			r.set_return(response);
